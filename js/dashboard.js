@@ -17,6 +17,8 @@ import { buildBackupPayload, buildBackupFilename } from './lib/backup.js';
 const nok = (n) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(n);
 
+const CATEGORY_CHART_Y_MAX = 500000;
+
 let categoryChart = null;
 let appConfig = {
   houseName: 'Husprosjekt',
@@ -213,6 +215,7 @@ function renderCategoryChart(realExpenses, allocExpenses, budgets) {
         },
         y: {
           stacked: true,
+          max: CATEGORY_CHART_Y_MAX,
           grid: { color: '#f0f0f0' },
           border: { display: false },
           ticks: { font: { size: 11 }, color: '#888', callback: (value) => nok(value) }
