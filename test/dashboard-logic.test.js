@@ -9,7 +9,8 @@ import {
   getEffectiveHours,
   getWorklogCost,
   aggregateContractors,
-  buildRecentActivity
+  buildRecentActivity,
+  isSunkCostExpense
 } from '../js/lib/dashboard-logic.js';
 
 test('splitExpenses separates transfers, allocated, and real expenses', () => {
@@ -50,6 +51,7 @@ test('buildCategoryRows combines spent and budget totals by category', () => {
   const rows = buildCategoryRows(
     [
       { category: 'Alpha', amount: 100 },
+      { category: '', amount: 20 },
       { category: 'Alpha', amount: 50 },
       { category: 'Beta', amount: 30 }
     ],
@@ -62,7 +64,8 @@ test('buildCategoryRows combines spent and budget totals by category', () => {
   assert.deepEqual(rows, [
     { categoryName: 'Alpha', spent: 150, allocated: 200, remaining: 50 },
     { categoryName: 'Beta', spent: 30, allocated: 0, remaining: -30 },
-    { categoryName: 'Gamma', spent: 0, allocated: 10, remaining: 10 }
+    { categoryName: 'Gamma', spent: 0, allocated: 10, remaining: 10 },
+    { categoryName: 'Udefinert', spent: 20, allocated: 0, remaining: -20 }
   ]);
 });
 
@@ -100,6 +103,31 @@ test('calculatePersonBalance returns balanced when within threshold', () => {
 
   assert.equal(balance.isBalanced, true);
   assert.equal(balance.settlement, null);
+});
+
+test('calculatePersonBalance excludes sunk cost rows from distribution', () => {
+  const balance = calculatePersonBalance(
+    [
+      { purchasedBy: 'Owner A', amount: 700 },
+      { purchasedBy: 'Owner B', amount: 300 },
+      { purchasedBy: 'Owner A', amount: 47000, description: 'SUNK kost' }
+    ],
+    []
+  );
+
+  assert.deepEqual(balance.rows, [
+    { name: 'Owner A', amount: 700, share: 70 },
+    { name: 'Owner B', amount: 300, share: 30 }
+  ]);
+  assert.deepEqual(balance.sunkRows, [
+    { name: 'Owner A', amount: 47000 }
+  ]);
+  assert.equal(balance.totalSunk, 47000);
+  assert.deepEqual(balance.settlement, {
+    debtor: 'Owner B',
+    creditor: 'Owner A',
+    amount: 200
+  });
 });
 
 test('worklog helpers apply numberOfPeople fallback and total cost', () => {
@@ -149,4 +177,10 @@ test('buildRecentActivity sorts by createdAt descending and preserves labels', (
   assert.equal(recent[0].type, 'Timer');
   assert.equal(recent[0].value, 4);
   assert.equal(recent[1].label, 'Alpha – Shop One');
+});
+
+test('isSunkCostExpense supports explicit flag and legacy description fallback', () => {
+  assert.equal(isSunkCostExpense({ sunkCost: true }), true);
+  assert.equal(isSunkCostExpense({ description: 'SUNK kost' }), true);
+  assert.equal(isSunkCostExpense({ description: 'Paint' }), false);
 });

@@ -1,12 +1,14 @@
 import { requireAuth } from './auth.js';
-import { addExpense, getExpenses, archiveExpense } from './db.js';
+import { addExpense, getExpenses, archiveExpense, updateExpense } from './db.js';
 import { applyHouseName } from './ui.js';
 import {
   getKnownCategories,
   resolveCategorySelection,
   getMemberSuggestions,
-  getSupplierSuggestions
+  getSupplierSuggestions,
+  normalizeExpenseCategory
 } from './lib/expense-options.js';
+import { isSunkCostExpense } from './lib/dashboard-logic.js';
 
 const nok = (n) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(n);
@@ -68,6 +70,14 @@ requireAuth(async (user) => {
   // Archive: two-tap confirmation on the table
   document.getElementById('expense-tbody').addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-archive');
+    const sunkBtn = e.target.closest('.btn-sunk');
+    if (sunkBtn) {
+      sunkBtn.disabled = true;
+      await updateExpense(sunkBtn.dataset.id, { sunkCost: sunkBtn.dataset.sunk !== '1' });
+      await loadExpenses();
+      return;
+    }
+
     if (!btn) return;
 
     if (!btn.dataset.confirm) {
@@ -148,31 +158,38 @@ function populateSupplierList() {
 function renderTable() {
   const filterCat = document.getElementById('filter-category').value;
   const visible = allExpenses.filter(e => !e.transfer);
-  const rows = filterCat ? visible.filter(e => e.category === filterCat) : visible;
-  const total = rows.reduce((s, e) => s + e.amount, 0);
+  const normalizedRows = filterCat
+    ? visible.filter((e) => normalizeExpenseCategory(e.category) === filterCat)
+    : visible;
 
-  if (rows.length === 0) {
+  if (normalizedRows.length === 0) {
     document.getElementById('expense-tbody').innerHTML =
       '<tr><td colspan="7" class="text-muted text-center">Ingen utgifter ennå</td></tr>';
     document.getElementById('expense-total').textContent = '';
     return;
   }
 
-  const realTotal = rows.filter(e => !e.allocated).reduce((s, e) => s + e.amount, 0);
-  const allocTotal = rows.filter(e => e.allocated).reduce((s, e) => s + e.amount, 0);
+  const realTotal = normalizedRows.filter(e => !e.allocated).reduce((s, e) => s + e.amount, 0);
+  const allocTotal = normalizedRows.filter(e => e.allocated).reduce((s, e) => s + e.amount, 0);
 
   let html = '';
-  for (const e of rows) {
+  for (const e of normalizedRows) {
     const allocBadge = e.allocated ? '<span class="alloc-badge">Allokert</span> ' : '';
+    const sunkBadge = isSunkCostExpense(e) ? '<span class="alloc-badge">Egen kost</span> ' : '';
     const rowClass   = e.allocated ? ' class="row-allocated"' : '';
     html += `<tr${rowClass}>
       <td>${e.date}</td>
-      <td>${allocBadge}${nok(e.amount)}</td>
-      <td>${e.category}</td>
+      <td>${allocBadge}${sunkBadge}${nok(e.amount)}</td>
+      <td>${normalizeExpenseCategory(e.category)}</td>
       <td>${e.supplierName || '—'}</td>
       <td>${e.description || '—'}</td>
       <td>${e.purchasedBy || '—'}</td>
-      <td><button class="btn-archive" data-id="${e.id}" title="Arkiver">×</button></td>
+      <td class="text-nowrap">
+        <button class="btn btn-sm btn-outline-secondary btn-sunk" data-id="${e.id}" data-sunk="${isSunkCostExpense(e) ? '1' : '0'}" title="Marker som egen kost">
+          ${isSunkCostExpense(e) ? 'Deles' : 'Egen'}
+        </button>
+        <button class="btn-archive" data-id="${e.id}" title="Arkiver">×</button>
+      </td>
     </tr>`;
   }
   document.getElementById('expense-tbody').innerHTML = html;
@@ -200,7 +217,8 @@ async function handleSubmit(e) {
     description: document.getElementById('exp-desc').value,
     purchasedBy: document.getElementById('exp-purchased-by').value.trim() || currentDisplayName,
     allocated: document.getElementById('exp-allocated').checked,
-    transfer: document.getElementById('exp-transfer').checked
+    transfer: document.getElementById('exp-transfer').checked,
+    sunkCost: document.getElementById('exp-sunk-cost').checked
   };
 
   try {

@@ -229,7 +229,7 @@ function renderPersonBalance(realExpenses, transfers) {
   const el = document.getElementById('person-balance');
   if (!el) return;
 
-  if (balance.rows.length === 0) {
+  if (balance.rows.length === 0 && balance.sunkRows.length === 0) {
     el.innerHTML = '<p class="text-muted small mb-0">Ingen data ennå</p>';
     return;
   }
@@ -260,7 +260,15 @@ function renderPersonBalance(realExpenses, transfers) {
     </p>`;
   }
 
-  el.innerHTML = `
+  let sunkHtml = '';
+  if (balance.sunkRows.length > 0) {
+    const details = balance.sunkRows
+      .map((row) => `${row.name}: ${nok(row.amount)}`)
+      .join(' · ');
+    sunkHtml = `<p class="small text-muted mb-0 mt-2">Egen kost holdt utenfor fordeling: ${details}</p>`;
+  }
+
+  const tableSection = balance.rows.length > 0 ? `
     <div class="table-responsive">
       <table class="table table-sm mb-0">
         <thead class="table-light">
@@ -273,7 +281,12 @@ function renderPersonBalance(realExpenses, transfers) {
         <tbody>${tableHtml}</tbody>
       </table>
     </div>
+  ` : '';
+
+  el.innerHTML = `
+    ${tableSection}
     ${balanceHtml}
+    ${sunkHtml}
   `;
 }
 

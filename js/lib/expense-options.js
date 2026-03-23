@@ -1,21 +1,28 @@
+export const UNDEFINED_CATEGORY = 'Udefinert';
+
+export function normalizeExpenseCategory(category) {
+  if (typeof category !== 'string') return UNDEFINED_CATEGORY;
+  const trimmed = category.trim();
+  return trimmed || UNDEFINED_CATEGORY;
+}
+
 export function getKnownCategories(defaultCategories = [], expenses = []) {
   const seen = new Set();
   const orderedDefaults = [];
 
   for (const category of defaultCategories) {
-    if (typeof category !== 'string') continue;
-    const trimmed = category.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    orderedDefaults.push(trimmed);
+    const normalized = normalizeExpenseCategory(category);
+    if (normalized === UNDEFINED_CATEGORY || seen.has(normalized)) continue;
+    seen.add(normalized);
+    orderedDefaults.push(normalized);
   }
 
   const extras = [];
   for (const expense of expenses) {
-    const category = typeof expense?.category === 'string' ? expense.category.trim() : '';
-    if (!category || seen.has(category)) continue;
-    seen.add(category);
-    extras.push(category);
+    const normalized = normalizeExpenseCategory(expense?.category);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    extras.push(normalized);
   }
 
   extras.sort((a, b) => a.localeCompare(b, 'nb'));

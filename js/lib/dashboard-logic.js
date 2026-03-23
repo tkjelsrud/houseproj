@@ -1,5 +1,13 @@
+import { normalizeExpenseCategory } from './expense-options.js';
+
 function toAmount(value) {
   return Number(value) || 0;
+}
+
+export function isSunkCostExpense(expense) {
+  if (expense?.sunkCost === true) return true;
+  const description = typeof expense?.description === 'string' ? expense.description.trim().toLowerCase() : '';
+  return description === 'sunk kost';
 }
 
 export function splitExpenses(expenses = []) {
@@ -44,7 +52,7 @@ export function buildRecentActivity(expenses = [], worklogs = [], limit = 3) {
   const expenseItems = expenses.map((expense) => ({
     type: 'Utgift',
     date: expense.date,
-    label: expense.category + (expense.supplierName ? ` – ${expense.supplierName}` : ''),
+    label: normalizeExpenseCategory(expense.category) + (expense.supplierName ? ` – ${expense.supplierName}` : ''),
     detail: expense.description || '',
     value: toAmount(expense.amount),
     ts: toMillis(expense)
@@ -70,11 +78,13 @@ export function buildCategoryChartData(realExpenses = [], allocExpenses = [], bu
   const budgetMap = {};
 
   for (const expense of realExpenses) {
-    realByCategory[expense.category] = (realByCategory[expense.category] || 0) + toAmount(expense.amount);
+    const category = normalizeExpenseCategory(expense.category);
+    realByCategory[category] = (realByCategory[category] || 0) + toAmount(expense.amount);
   }
 
   for (const expense of allocExpenses) {
-    allocByCategory[expense.category] = (allocByCategory[expense.category] || 0) + toAmount(expense.amount);
+    const category = normalizeExpenseCategory(expense.category);
+    allocByCategory[category] = (allocByCategory[category] || 0) + toAmount(expense.amount);
   }
 
   for (const budget of budgets) {
@@ -94,7 +104,8 @@ export function buildCategoryRows(realExpenses = [], budgets = []) {
   const budgetMap = {};
 
   for (const expense of realExpenses) {
-    spentByCategory[expense.category] = (spentByCategory[expense.category] || 0) + toAmount(expense.amount);
+    const category = normalizeExpenseCategory(expense.category);
+    spentByCategory[category] = (spentByCategory[category] || 0) + toAmount(expense.amount);
   }
 
   for (const budget of budgets) {
@@ -121,9 +132,14 @@ export function buildCategoryRows(realExpenses = [], budgets = []) {
 
 export function calculatePersonBalance(realExpenses = [], transfers = [], threshold = 10) {
   const totalsByPerson = {};
+  const sunkByPerson = {};
 
   for (const expense of realExpenses) {
     const name = (expense.purchasedBy || '').trim() || 'Ukjent';
+    if (isSunkCostExpense(expense)) {
+      sunkByPerson[name] = (sunkByPerson[name] || 0) + toAmount(expense.amount);
+      continue;
+    }
     totalsByPerson[name] = (totalsByPerson[name] || 0) + toAmount(expense.amount);
   }
 
@@ -140,6 +156,10 @@ export function calculatePersonBalance(realExpenses = [], transfers = [], thresh
     return {
       rows,
       total,
+      sunkRows: Object.keys(sunkByPerson)
+        .sort((a, b) => a.localeCompare(b, 'nb'))
+        .map((name) => ({ name, amount: sunkByPerson[name] })),
+      totalSunk: Object.values(sunkByPerson).reduce((sum, value) => sum + value, 0),
       totalTransfers: transfers.reduce((sum, transfer) => sum + toAmount(transfer.amount), 0),
       settlement: null,
       isBalanced: false
@@ -157,12 +177,17 @@ export function calculatePersonBalance(realExpenses = [], transfers = [], thresh
   }
 
   const totalTransfers = transfers.reduce((sum, transfer) => sum + toAmount(transfer.amount), 0);
+  const totalSunk = Object.values(sunkByPerson).reduce((sum, value) => sum + value, 0);
   const isBalanced = Math.abs(net) <= threshold;
 
   if (isBalanced) {
     return {
       rows,
       total,
+      sunkRows: Object.keys(sunkByPerson)
+        .sort((a, b) => a.localeCompare(b, 'nb'))
+        .map((name) => ({ name, amount: sunkByPerson[name] })),
+      totalSunk,
       totalTransfers,
       settlement: null,
       isBalanced: true
@@ -172,6 +197,10 @@ export function calculatePersonBalance(realExpenses = [], transfers = [], thresh
   return {
     rows,
     total,
+    sunkRows: Object.keys(sunkByPerson)
+      .sort((a, b) => a.localeCompare(b, 'nb'))
+      .map((name) => ({ name, amount: sunkByPerson[name] })),
+    totalSunk,
     totalTransfers,
     settlement: {
       debtor: net > 0 ? sorted[1].name : sorted[0].name,

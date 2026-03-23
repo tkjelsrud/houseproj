@@ -36,6 +36,7 @@ export async function addExpense(data, uid) {
     purchasedBy: (data.purchasedBy || '').trim(),
     allocated: data.allocated === true,
     transfer: data.transfer === true,
+    sunkCost: data.sunkCost === true,
     addedBy: uid,
     createdAt: serverTimestamp()
   });
@@ -51,6 +52,10 @@ export async function getExpenses() {
 
 export async function archiveExpense(id) {
   return updateDoc(doc(db, 'expenses', id), { archived: true });
+}
+
+export async function updateExpense(id, data) {
+  return updateDoc(doc(db, 'expenses', id), data);
 }
 
 // ---- Work Logs ----

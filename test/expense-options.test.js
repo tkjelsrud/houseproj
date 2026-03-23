@@ -5,7 +5,8 @@ import {
   getKnownCategories,
   resolveCategorySelection,
   getMemberSuggestions,
-  getSupplierSuggestions
+  getSupplierSuggestions,
+  normalizeExpenseCategory
 } from '../js/lib/expense-options.js';
 
 test('getKnownCategories preserves configured order and appends sorted extras', () => {
@@ -43,4 +44,10 @@ test('getSupplierSuggestions merges config suggestions with historical suppliers
   );
 
   assert.deepEqual(suppliers, ['Supplier One', 'Supplier Two']);
+});
+
+test('normalizeExpenseCategory maps blank values to Udefinert', () => {
+  assert.equal(normalizeExpenseCategory(''), 'Udefinert');
+  assert.equal(normalizeExpenseCategory('  '), 'Udefinert');
+  assert.equal(normalizeExpenseCategory('Alpha'), 'Alpha');
 });
