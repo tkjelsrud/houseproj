@@ -6,6 +6,7 @@ import {
   calculateSummary,
   buildRecentActivity,
   buildCategoryChartData,
+  buildBudgetAnnotations,
   buildCategoryRows,
   calculatePersonBalance,
   aggregateContractors
@@ -166,25 +167,7 @@ function renderCategoryChart(realExpenses, allocExpenses, budgets) {
   }
   document.getElementById('category-chart').style.display = '';
 
-  const annotations = {};
-  labels.forEach((label, i) => {
-    const budget = budgetMap[label];
-    if (budget > 0) {
-      annotations[`budget_${i}`] = {
-        type: 'line',
-        scaleID: 'y',
-        value: budget,
-        borderColor: 'rgba(180,0,0,0.5)',
-        borderWidth: 1.5,
-        borderDash: [4, 3],
-        xMin: i - 0.4,
-        xMax: i + 0.4,
-        label: {
-          display: false
-        }
-      };
-    }
-  });
+  const annotations = buildBudgetAnnotations(labels, budgetMap);
 
   categoryChart = new Chart(document.getElementById('category-chart'), {
     type: 'bar',

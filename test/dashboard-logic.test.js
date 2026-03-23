@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   splitExpenses,
   calculateSummary,
+  buildBudgetAnnotations,
   buildCategoryRows,
   calculatePersonBalance,
   getEffectiveHours,
@@ -67,6 +68,31 @@ test('buildCategoryRows combines spent and budget totals by category', () => {
     { categoryName: 'Gamma', spent: 0, allocated: 10, remaining: 10 },
     { categoryName: 'Udefinert', spent: 20, allocated: 0, remaining: -20 }
   ]);
+});
+
+test('buildBudgetAnnotations creates separate horizontal segments per category budget', () => {
+  const annotations = buildBudgetAnnotations(['Alpha', 'Beta'], {
+    Alpha: 100,
+    Beta: 0
+  });
+
+  assert.deepEqual(annotations, {
+    budget_0: {
+      type: 'line',
+      xScaleID: 'x',
+      yScaleID: 'y',
+      xMin: -0.4,
+      xMax: 0.4,
+      yMin: 100,
+      yMax: 100,
+      borderColor: 'rgba(180,0,0,0.55)',
+      borderWidth: 1.5,
+      borderDash: [4, 3],
+      label: {
+        display: false
+      }
+    }
+  });
 });
 
 test('calculatePersonBalance handles settlement and transfer adjustments', () => {

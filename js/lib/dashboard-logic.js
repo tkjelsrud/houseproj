@@ -94,6 +94,33 @@ export function buildCategoryChartData(realExpenses = [], allocExpenses = [], bu
   return { labels, realByCategory, allocByCategory, budgetMap };
 }
 
+export function buildBudgetAnnotations(labels = [], budgetMap = {}) {
+  const annotations = {};
+
+  labels.forEach((label, index) => {
+    const budget = toAmount(budgetMap[label]);
+    if (budget <= 0) return;
+
+    annotations[`budget_${index}`] = {
+      type: 'line',
+      xScaleID: 'x',
+      yScaleID: 'y',
+      xMin: index - 0.4,
+      xMax: index + 0.4,
+      yMin: budget,
+      yMax: budget,
+      borderColor: 'rgba(180,0,0,0.55)',
+      borderWidth: 1.5,
+      borderDash: [4, 3],
+      label: {
+        display: false
+      }
+    };
+  });
+
+  return annotations;
+}
+
 export function buildCategoryRows(realExpenses = [], budgets = []) {
   const spentByCategory = {};
   const budgetMap = {};
