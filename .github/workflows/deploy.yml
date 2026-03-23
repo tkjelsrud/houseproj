@@ -1,0 +1,75 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate firebase-config.js from secrets
+        run: |
+          cat > js/firebase-config.js << 'JSEOF'
+          import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+
+          const firebaseConfig = {
+            apiKey: "FIREBASE_API_KEY",
+            authDomain: "FIREBASE_AUTH_DOMAIN",
+            projectId: "FIREBASE_PROJECT_ID",
+            storageBucket: "FIREBASE_STORAGE_BUCKET",
+            messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+            appId: "FIREBASE_APP_ID",
+            measurementId: "FIREBASE_MEASUREMENT_ID"
+          };
+
+          export const app = initializeApp(firebaseConfig);
+          JSEOF
+          sed -i "s|FIREBASE_API_KEY|${{ secrets.FIREBASE_API_KEY }}|g" js/firebase-config.js
+          sed -i "s|FIREBASE_AUTH_DOMAIN|${{ secrets.FIREBASE_AUTH_DOMAIN }}|g" js/firebase-config.js
+          sed -i "s|FIREBASE_PROJECT_ID|${{ secrets.FIREBASE_PROJECT_ID }}|g" js/firebase-config.js
+          sed -i "s|FIREBASE_STORAGE_BUCKET|${{ secrets.FIREBASE_STORAGE_BUCKET }}|g" js/firebase-config.js
+          sed -i "s|FIREBASE_MESSAGING_SENDER_ID|${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}|g" js/firebase-config.js
+          sed -i "s|FIREBASE_APP_ID|${{ secrets.FIREBASE_APP_ID }}|g" js/firebase-config.js
+          sed -i "s|FIREBASE_MEASUREMENT_ID|${{ secrets.FIREBASE_MEASUREMENT_ID }}|g" js/firebase-config.js
+
+      - name: Generate runtime-config.js from secrets
+        run: |
+          cat > js/runtime-config.js << 'JSEOF'
+          export const runtimeConfig = {
+            allowedUids: [
+              "FIREBASE_ALLOWED_UID_1",
+              "FIREBASE_ALLOWED_UID_2"
+            ].filter(Boolean)
+          };
+          JSEOF
+          sed -i "s|FIREBASE_ALLOWED_UID_1|${{ secrets.FIREBASE_ALLOWED_UID_1 }}|g" js/runtime-config.js
+          sed -i "s|FIREBASE_ALLOWED_UID_2|${{ secrets.FIREBASE_ALLOWED_UID_2 }}|g" js/runtime-config.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

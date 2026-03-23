@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowedUser() {
+      return request.auth != null
+        && request.auth.uid in [
+          "REPLACE_WITH_UID_1",
+          "REPLACE_WITH_UID_2"
+        ];
+    }
+
+    match /config/{docId}     { allow read, write: if isAllowedUser(); }
+    match /expenses/{docId}   { allow read, write: if isAllowedUser(); }
+    match /worklogs/{docId}   { allow read, write: if isAllowedUser(); }
+    match /budgets/{docId}    { allow read, write: if isAllowedUser(); }
+    match /{document=**}      { allow read, write: if false; }
+  }
+}

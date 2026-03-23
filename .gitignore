@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V7
+.Trashes
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Firebase CLI local files
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Firebase Admin SDK — must NEVER be committed
+*service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+
+# Exported data dumps
+*.json
+!package.json
+
+# Firebase config with real credentials — never commit
+js/firebase-config.js
+js/runtime-config.js
+
+# One-time utility scripts — delete after use
+import.html
+fix-dates.html
+
+# Secrets / environment
+.env
+.env.*
+
+# Node modules (if firebase CLI installed locally)
+node_modules/
