@@ -1,13 +1,8 @@
 import { normalizeExpenseCategory } from './expense-options.js';
+import { isSunkCostExpense } from './expense-flags.js';
 
 function toAmount(value) {
   return Number(value) || 0;
-}
-
-export function isSunkCostExpense(expense) {
-  if (expense?.sunkCost === true) return true;
-  const description = typeof expense?.description === 'string' ? expense.description.trim().toLowerCase() : '';
-  return description === 'sunk kost';
 }
 
 export function splitExpenses(expenses = []) {

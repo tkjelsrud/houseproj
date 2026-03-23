@@ -9,9 +9,9 @@ import {
   getEffectiveHours,
   getWorklogCost,
   aggregateContractors,
-  buildRecentActivity,
-  isSunkCostExpense
+  buildRecentActivity
 } from '../js/lib/dashboard-logic.js';
+import { isSunkCostExpense } from '../js/lib/expense-flags.js';
 
 test('splitExpenses separates transfers, allocated, and real expenses', () => {
   const expenses = [

@@ -8,7 +8,7 @@ import {
   getSupplierSuggestions,
   normalizeExpenseCategory
 } from './lib/expense-options.js';
-import { isSunkCostExpense } from './lib/dashboard-logic.js';
+import { isSunkCostExpense } from './lib/expense-flags.js';
 
 const nok = (n) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(n);
