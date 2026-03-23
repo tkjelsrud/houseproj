@@ -11,6 +11,7 @@ import {
   aggregateContractors
 } from './lib/dashboard-logic.js';
 import { getKnownCategories } from './lib/expense-options.js';
+import { buildBackupPayload, buildBackupFilename } from './lib/backup.js';
 
 const nok = (n) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(n);
@@ -22,6 +23,7 @@ let appConfig = {
   defaultExpenseCategories: [],
   supplierSuggestions: []
 };
+let latestBackupData = null;
 
 requireAuth(async (user) => {
   document.getElementById('user-email').textContent = user.email;
@@ -29,6 +31,7 @@ requireAuth(async (user) => {
   await loadDashboard();
 
   document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+  document.getElementById('backup-download-btn').addEventListener('click', downloadBackup);
 
   document.getElementById('budget-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -55,6 +58,7 @@ async function loadDashboard() {
     ]);
 
     const { transfers, realExpenses, allocExpenses } = splitExpenses(expenses);
+    latestBackupData = { appConfig, expenses, worklogs, budgets };
 
     populateBudgetCategoryList(expenses, budgets);
     renderSummary(realExpenses, worklogs, allocExpenses);
@@ -70,6 +74,38 @@ async function loadDashboard() {
     document.getElementById('loading').classList.add('d-none');
     document.getElementById('load-error').textContent = `Feil: ${err.message}`;
     document.getElementById('load-error').classList.remove('d-none');
+    console.error(err);
+  }
+}
+
+function setBackupStatus(message, isError = false) {
+  const el = document.getElementById('backup-status');
+  el.textContent = message;
+  el.className = isError ? 'text-danger small' : 'text-muted small';
+}
+
+function downloadBackup() {
+  if (!latestBackupData) {
+    setBackupStatus('Ingen data klare for eksport ennå.', true);
+    return;
+  }
+
+  try {
+    const payload = buildBackupPayload(latestBackupData);
+    const filename = buildBackupFilename(appConfig.houseName, payload.exportedAt);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    setBackupStatus(`Backup lastet ned: ${payload.counts.expenses} utgifter, ${payload.counts.worklogs} arbeidslogger.`);
+  } catch (err) {
+    setBackupStatus(`Kunne ikke lage backup: ${err.message}`, true);
     console.error(err);
   }
 }
