@@ -31,42 +31,54 @@
   </div>
 
   <script type="module">
-    import { auth, loginWithGoogle, isAuthorizedUser, logout } from './js/auth.js';
-    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
+    const errorMsg = document.getElementById('error-msg');
+    const loginButton = document.getElementById('google-btn');
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('reason') === 'unauthorized') {
-      const errorMsg = document.getElementById('error-msg');
-      errorMsg.textContent = 'Denne kontoen har ikke tilgang til appen.';
+    function showError(message) {
+      errorMsg.textContent = message;
       errorMsg.classList.remove('d-none');
     }
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'unauthorized') {
+      showError('Denne kontoen har ikke tilgang til appen.');
+    }
 
-      if (!await isAuthorizedUser(user)) {
-        await logout('unauthorized');
-        return;
-      }
+    try {
+      const [{ auth, loginWithGoogle, isAuthorizedUser, logout }, { onAuthStateChanged }] = await Promise.all([
+        import('./js/auth.js'),
+        import('https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js')
+      ]);
 
-      window.location.href = 'dashboard.html';
-    });
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
 
-    document.getElementById('google-btn').addEventListener('click', async () => {
-      const errorMsg = document.getElementById('error-msg');
-      errorMsg.classList.add('d-none');
-      try {
-        await loginWithGoogle();
-        if (!await isAuthorizedUser(auth.currentUser)) {
+        if (!await isAuthorizedUser(user)) {
           await logout('unauthorized');
           return;
         }
+
         window.location.href = 'dashboard.html';
-      } catch (err) {
-        errorMsg.textContent = 'Innlogging feilet. Prøv igjen.';
-        errorMsg.classList.remove('d-none');
-      }
-    });
+      });
+
+      loginButton.addEventListener('click', async () => {
+        errorMsg.classList.add('d-none');
+        try {
+          await loginWithGoogle();
+          if (!await isAuthorizedUser(auth.currentUser)) {
+            await logout('unauthorized');
+            return;
+          }
+          window.location.href = 'dashboard.html';
+        } catch (err) {
+          showError('Innlogging feilet. Prøv igjen.');
+        }
+      });
+    } catch (err) {
+      loginButton.disabled = true;
+      showError('Firebase-konfigurasjon mangler i deployen. Sjekk GitHub Pages-oppsettet og workflow-secrets.');
+      console.error(err);
+    }
   </script>
 </body>
 </html>

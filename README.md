@@ -70,6 +70,8 @@ The GitHub Actions workflow generates `js/firebase-config.js` and `js/runtime-co
 
 Enable GitHub Pages with **Build and deployment → Source → GitHub Actions**.
 
+If the deployed login page shows a 404 for `js/firebase-config.js`, GitHub Pages is almost certainly serving the branch directly instead of the Actions artifact, or the deploy workflow ran without the required secrets.
+
 ## Firestore rules
 
 Use [`firestore.rules.example`](firestore.rules.example) as the starting point. Replace the UID placeholders with your real allowed Google UIDs and publish the rules from the Firebase console or Firebase CLI.
