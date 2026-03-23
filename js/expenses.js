@@ -8,7 +8,7 @@ import {
   getSupplierSuggestions,
   normalizeExpenseCategory
 } from './lib/expense-options.js';
-import { isSunkCostExpense } from './lib/expense-flags.js';
+import { isSunkCostExpense, normalizeExpenseFlags } from './lib/expense-flags.js';
 
 const nok = (n) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(n);
@@ -62,6 +62,8 @@ requireAuth(async (user) => {
     }
   });
 
+  wireExclusiveExpenseFlags();
+
   await loadExpenses();
 
   document.getElementById('expense-form').addEventListener('submit', handleSubmit);
@@ -73,7 +75,13 @@ requireAuth(async (user) => {
     const sunkBtn = e.target.closest('.btn-sunk');
     if (sunkBtn) {
       sunkBtn.disabled = true;
-      await updateExpense(sunkBtn.dataset.id, { sunkCost: sunkBtn.dataset.sunk !== '1' });
+      const nextSunkState = sunkBtn.dataset.sunk !== '1';
+      await updateExpense(
+        sunkBtn.dataset.id,
+        nextSunkState
+          ? normalizeExpenseFlags({ sunkCost: true }, 'sunkCost')
+          : { sunkCost: false }
+      );
       await loadExpenses();
       return;
     }
@@ -155,6 +163,35 @@ function populateSupplierList() {
     suppliers.map((name) => `<option>${name}</option>`).join('');
 }
 
+function getExpenseFlagInputs() {
+  return {
+    allocated: document.getElementById('exp-allocated'),
+    transfer: document.getElementById('exp-transfer'),
+    sunkCost: document.getElementById('exp-sunk-cost')
+  };
+}
+
+function applyExpenseFlagState(flags) {
+  const inputs = getExpenseFlagInputs();
+  inputs.allocated.checked = flags.allocated;
+  inputs.transfer.checked = flags.transfer;
+  inputs.sunkCost.checked = flags.sunkCost;
+}
+
+function wireExclusiveExpenseFlags() {
+  const inputs = getExpenseFlagInputs();
+
+  Object.entries(inputs).forEach(([flagName, input]) => {
+    input.addEventListener('change', () => {
+      applyExpenseFlagState(normalizeExpenseFlags({
+        allocated: inputs.allocated.checked,
+        transfer: inputs.transfer.checked,
+        sunkCost: inputs.sunkCost.checked
+      }, flagName));
+    });
+  });
+}
+
 function renderTable() {
   const filterCat = document.getElementById('filter-category').value;
   const visible = allExpenses.filter(e => !e.transfer);
@@ -209,6 +246,14 @@ async function handleSubmit(e) {
     category = document.getElementById('exp-category-new').value.trim();
   }
 
+  const flags = normalizeExpenseFlags({
+    allocated: document.getElementById('exp-allocated').checked,
+    transfer: document.getElementById('exp-transfer').checked,
+    sunkCost: document.getElementById('exp-sunk-cost').checked
+  });
+
+  applyExpenseFlagState(flags);
+
   const data = {
     date: document.getElementById('exp-date').value,
     amount: document.getElementById('exp-amount').value,
@@ -216,9 +261,9 @@ async function handleSubmit(e) {
     supplierName: document.getElementById('exp-supplier').value,
     description: document.getElementById('exp-desc').value,
     purchasedBy: document.getElementById('exp-purchased-by').value.trim() || currentDisplayName,
-    allocated: document.getElementById('exp-allocated').checked,
-    transfer: document.getElementById('exp-transfer').checked,
-    sunkCost: document.getElementById('exp-sunk-cost').checked
+    allocated: flags.allocated,
+    transfer: flags.transfer,
+    sunkCost: flags.sunkCost
   };
 
   try {

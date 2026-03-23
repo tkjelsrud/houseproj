@@ -12,7 +12,7 @@ import {
   aggregateContractors,
   buildRecentActivity
 } from '../js/lib/dashboard-logic.js';
-import { isSunkCostExpense } from '../js/lib/expense-flags.js';
+import { isSunkCostExpense, normalizeExpenseFlags } from '../js/lib/expense-flags.js';
 
 test('splitExpenses separates transfers, allocated, and real expenses', () => {
   const expenses = [
@@ -209,4 +209,19 @@ test('isSunkCostExpense supports explicit flag and legacy description fallback',
   assert.equal(isSunkCostExpense({ sunkCost: true }), true);
   assert.equal(isSunkCostExpense({ description: 'SUNK kost' }), true);
   assert.equal(isSunkCostExpense({ description: 'Paint' }), false);
+});
+
+test('normalizeExpenseFlags keeps expense mode exclusive', () => {
+  assert.deepEqual(
+    normalizeExpenseFlags({ allocated: true, sunkCost: true }, 'sunkCost'),
+    { allocated: false, transfer: false, sunkCost: true }
+  );
+  assert.deepEqual(
+    normalizeExpenseFlags({ allocated: true, transfer: true }, 'transfer'),
+    { allocated: false, transfer: true, sunkCost: false }
+  );
+  assert.deepEqual(
+    normalizeExpenseFlags({ allocated: true, transfer: true, sunkCost: true }, 'allocated'),
+    { allocated: true, transfer: false, sunkCost: false }
+  );
 });
