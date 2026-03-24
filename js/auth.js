@@ -2,13 +2,16 @@ import { app } from './firebase-config.js';
 import {
   getAuth,
   GoogleAuthProvider,
+  getRedirectResult,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js';
 
 export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
 
 async function loadRuntimeConfig() {
   try {
@@ -32,7 +35,23 @@ export async function isAuthorizedUser(user) {
   return allowedUids.includes(user.uid);
 }
 
-export function loginWithGoogle() {
+function shouldUseRedirectLogin() {
+  const ua = navigator.userAgent || '';
+  const isIOSDevice = /iPad|iPhone|iPod/.test(ua);
+  const isIPadDesktopMode = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isIOSDevice || isIPadDesktopMode;
+}
+
+export async function finalizeLoginRedirect() {
+  return getRedirectResult(auth);
+}
+
+export async function loginWithGoogle() {
+  if (shouldUseRedirectLogin()) {
+    await signInWithRedirect(auth, provider);
+    return { redirected: true };
+  }
+
   return signInWithPopup(auth, provider);
 }
 
