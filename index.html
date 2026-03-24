@@ -16,6 +16,9 @@
         <p class="text-muted mb-4 small">Privat utgifts- og timeregistrering</p>
 
         <div id="error-msg" class="alert alert-danger d-none text-start" role="alert"></div>
+        <div id="standalone-msg" class="alert alert-warning d-none text-start small" role="alert">
+          Innlogging fra bokmerke på iPhone-hjemskjermen støttes ikke stabilt her. Åpne appen i Safari for å logge inn.
+        </div>
 
         <button id="google-btn" class="btn btn-outline-dark w-100 d-flex align-items-center justify-content-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 48 48">
@@ -33,6 +36,7 @@
 
   <script type="module">
     const errorMsg = document.getElementById('error-msg');
+    const standaloneMsg = document.getElementById('standalone-msg');
     const loginButton = document.getElementById('google-btn');
 
     function showError(message) {
@@ -40,9 +44,23 @@
       errorMsg.classList.remove('d-none');
     }
 
+    function isIosStandaloneMode() {
+      const standaloneByDisplayMode = window.matchMedia?.('(display-mode: standalone)').matches;
+      const standaloneByNavigator = window.navigator.standalone === true;
+      const isIOSDevice = /iPad|iPhone|iPod/.test(window.navigator.userAgent || '')
+        || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+      return isIOSDevice && (standaloneByDisplayMode || standaloneByNavigator);
+    }
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('reason') === 'unauthorized') {
       showError('Denne kontoen har ikke tilgang til appen.');
+    }
+
+    if (isIosStandaloneMode()) {
+      standaloneMsg.classList.remove('d-none');
+      loginButton.disabled = true;
+      loginButton.title = 'Åpne appen i Safari for å logge inn med Google';
     }
 
     (async () => {
