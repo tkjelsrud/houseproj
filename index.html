@@ -45,7 +45,7 @@
       showError('Denne kontoen har ikke tilgang til appen.');
     }
 
-    try {
+    (async () => {
       const [{ auth, loginWithGoogle, isAuthorizedUser, logout }, { onAuthStateChanged }] = await Promise.all([
         import('./js/auth.js'),
         import('https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js')
@@ -73,13 +73,14 @@
           window.location.href = 'dashboard.html';
         } catch (err) {
           showError('Innlogging feilet. Prøv igjen.');
+          console.error(err);
         }
       });
-    } catch (err) {
+    })().catch((err) => {
       loginButton.disabled = true;
       showError('Firebase-konfigurasjon mangler i deployen. Sjekk GitHub Pages-oppsettet og workflow-secrets.');
       console.error(err);
-    }
+    });
   </script>
 </body>
 </html>
