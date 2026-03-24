@@ -16,6 +16,9 @@ const nok = (n) =>
 let currentUser = null;
 let allExpenses = [];
 let currentDisplayName = '';
+let editingExpenseId = null;
+let editingCategoryValue = '';
+let editingCategoryNewValue = '';
 let appConfig = {
   houseName: 'Husprosjekt',
   memberNames: [],
@@ -73,6 +76,26 @@ requireAuth(async (user) => {
   document.getElementById('expense-tbody').addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-archive');
     const sunkBtn = e.target.closest('.btn-sunk');
+    const editBtn = e.target.closest('.btn-category-edit');
+    const cancelBtn = e.target.closest('.btn-category-cancel');
+    const saveBtn = e.target.closest('.btn-category-save');
+
+    if (editBtn) {
+      startCategoryEdit(editBtn.dataset.id);
+      return;
+    }
+
+    if (cancelBtn) {
+      stopCategoryEdit();
+      return;
+    }
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      await saveCategoryEdit(saveBtn.dataset.id);
+      return;
+    }
+
     if (sunkBtn) {
       sunkBtn.disabled = true;
       const nextSunkState = sunkBtn.dataset.sunk !== '1';
@@ -103,6 +126,22 @@ requireAuth(async (user) => {
       btn.disabled = true;
       await archiveExpense(btn.dataset.id);
       await loadExpenses();
+    }
+  });
+
+  document.getElementById('expense-tbody').addEventListener('change', (e) => {
+    if (e.target.matches('.expense-category-edit-select')) {
+      editingCategoryValue = e.target.value;
+      if (editingCategoryValue !== '__new__') {
+        editingCategoryNewValue = '';
+      }
+      renderTable();
+    }
+  });
+
+  document.getElementById('expense-tbody').addEventListener('input', (e) => {
+    if (e.target.matches('.expense-category-edit-new')) {
+      editingCategoryNewValue = e.target.value;
     }
   });
 });
@@ -163,6 +202,51 @@ function populateSupplierList() {
     suppliers.map((name) => `<option>${name}</option>`).join('');
 }
 
+function startCategoryEdit(expenseId) {
+  const expense = allExpenses.find((item) => item.id === expenseId);
+  if (!expense) return;
+
+  editingExpenseId = expenseId;
+  editingCategoryValue = normalizeExpenseCategory(expense.category);
+  editingCategoryNewValue = '';
+  renderTable();
+}
+
+function stopCategoryEdit() {
+  editingExpenseId = null;
+  editingCategoryValue = '';
+  editingCategoryNewValue = '';
+  renderTable();
+}
+
+function resolveEditedCategory() {
+  if (editingCategoryValue === '__new__') {
+    return editingCategoryNewValue.trim();
+  }
+  return normalizeExpenseCategory(editingCategoryValue);
+}
+
+async function saveCategoryEdit(expenseId) {
+  const nextCategory = resolveEditedCategory();
+  if (!nextCategory) {
+    alert('Velg kategori eller skriv inn en ny kategori.');
+    renderTable();
+    return;
+  }
+
+  try {
+    await updateExpense(expenseId, { category: nextCategory });
+    editingExpenseId = null;
+    editingCategoryValue = '';
+    editingCategoryNewValue = '';
+    await loadExpenses();
+  } catch (err) {
+    alert('Kunne ikke oppdatere kategori. Prøv igjen.');
+    console.error(err);
+    renderTable();
+  }
+}
+
 function getExpenseFlagInputs() {
   return {
     allocated: document.getElementById('exp-allocated'),
@@ -211,21 +295,51 @@ function renderTable() {
 
   let html = '';
   for (const e of normalizedRows) {
+    const isEditingCategory = editingExpenseId === e.id;
     const allocBadge = e.allocated ? '<span class="alloc-badge">Allokert</span> ' : '';
     const sunkBadge = isSunkCostExpense(e) ? '<span class="alloc-badge">Egen kost</span> ' : '';
     const rowClass   = e.allocated ? ' class="row-allocated"' : '';
-    html += `<tr${rowClass}>
-      <td>${e.date}</td>
-      <td>${allocBadge}${sunkBadge}${nok(e.amount)}</td>
-      <td>${normalizeExpenseCategory(e.category)}</td>
-      <td>${e.supplierName || '—'}</td>
-      <td>${e.description || '—'}</td>
-      <td>${e.purchasedBy || '—'}</td>
-      <td class="text-nowrap">
+    const categoryOptions = allKnownCategories()
+      .map((category) => `<option value="${category}"${category === editingCategoryValue ? ' selected' : ''}>${category}</option>`)
+      .join('');
+    const categoryCell = isEditingCategory ? `
+      <div class="d-flex flex-column gap-1">
+        <select class="form-select form-select-sm expense-category-edit-select">
+          ${categoryOptions}
+          <option value="__new__"${editingCategoryValue === '__new__' ? ' selected' : ''}>＋ Ny kategori…</option>
+        </select>
+        <input
+          type="text"
+          class="form-control form-control-sm expense-category-edit-new${editingCategoryValue === '__new__' ? '' : ' d-none'}"
+          placeholder="Navn på ny kategori"
+          value="${editingCategoryValue === '__new__' ? escapeHtml(editingCategoryNewValue) : ''}"
+        />
+      </div>
+    ` : normalizeExpenseCategory(e.category);
+    const actionCell = isEditingCategory ? `
+      <div class="d-flex flex-wrap gap-1 justify-content-end">
+        <button class="btn btn-sm btn-primary btn-category-save" data-id="${e.id}">Lagre</button>
+        <button class="btn btn-sm btn-outline-secondary btn-category-cancel" data-id="${e.id}">Avbryt</button>
+        <button class="btn-archive" data-id="${e.id}" title="Arkiver">×</button>
+      </div>
+    ` : `
+      <div class="d-flex flex-wrap gap-1 justify-content-end">
+        <button class="btn btn-sm btn-outline-secondary btn-category-edit" data-id="${e.id}" title="Endre kategori">Kategori</button>
         <button class="btn btn-sm btn-outline-secondary btn-sunk" data-id="${e.id}" data-sunk="${isSunkCostExpense(e) ? '1' : '0'}" title="Marker som egen kost">
           ${isSunkCostExpense(e) ? 'Deles' : 'Egen'}
         </button>
         <button class="btn-archive" data-id="${e.id}" title="Arkiver">×</button>
+      </div>
+    `;
+    html += `<tr${rowClass}>
+      <td>${e.date}</td>
+      <td>${allocBadge}${sunkBadge}${nok(e.amount)}</td>
+      <td>${categoryCell}</td>
+      <td>${e.supplierName || '—'}</td>
+      <td>${e.description || '—'}</td>
+      <td>${e.purchasedBy || '—'}</td>
+      <td>
+        ${actionCell}
       </td>
     </tr>`;
   }
@@ -281,4 +395,12 @@ async function handleSubmit(e) {
   } finally {
     btn.disabled = false;
   }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
