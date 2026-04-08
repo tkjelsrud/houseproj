@@ -73,6 +73,13 @@ export async function addWorklog(data, uid) {
   });
 }
 
+export async function updateWorklog(id, data) {
+  return updateDoc(doc(db, 'worklogs', id), {
+    ...data,
+    updatedAt: serverTimestamp()
+  });
+}
+
 export async function getWorklogs() {
   const q = query(collection(db, 'worklogs'), orderBy('date', 'desc'));
   const snap = await getDocs(q);

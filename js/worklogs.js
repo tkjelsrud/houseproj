@@ -1,5 +1,5 @@
 import { requireAuth } from './auth.js';
-import { addWorklog, getWorklogs } from './db.js';
+import { addWorklog, getWorklogs, updateWorklog } from './db.js';
 import { applyHouseName } from './ui.js';
 import { getEffectiveHours, getWorklogCost } from './lib/dashboard-logic.js';
 
@@ -20,6 +20,10 @@ requireAuth(async (user) => {
 
   document.getElementById('worklog-form').addEventListener('submit', handleSubmit);
   document.getElementById('filter-contractor').addEventListener('change', renderTable);
+  document.getElementById('worklog-tbody').addEventListener('click', (e) => {
+    const td = e.target.closest('td.editable');
+    if (td) startInlineEdit(td);
+  });
 });
 
 async function loadWorklogs() {
@@ -58,8 +62,8 @@ function renderTable() {
     html += `<tr>
       <td>${w.date}</td>
       <td>${w.contractorName}</td>
-      <td>${totalH.toFixed(1)} h${people > 1 ? ` <span class="text-muted" style="font-size:0.8em">(${people}×${w.hours}h)</span>` : ''}</td>
-      <td>${nok(w.hourlyRate)}/h</td>
+      <td class="editable" data-id="${w.id}" data-field="hours" role="button" title="Klikk for å endre">${totalH.toFixed(1)} h${people > 1 ? ` <span class="text-muted" style="font-size:0.8em">(${people}×${w.hours}h)</span>` : ''}</td>
+      <td class="editable" data-id="${w.id}" data-field="hourlyRate" role="button" title="Klikk for å endre">${nok(w.hourlyRate)}/h</td>
       <td>${nok(cost)}</td>
       <td>${w.taskDescription || '—'}</td>
     </tr>`;
@@ -67,6 +71,48 @@ function renderTable() {
   document.getElementById('worklog-tbody').innerHTML = html;
   document.getElementById('worklog-total').textContent =
     `${totalHours.toFixed(1)} h · ${nok(totalCost)}`;
+}
+
+function startInlineEdit(td) {
+  if (td.querySelector('input')) return;
+  const id = td.dataset.id;
+  const field = td.dataset.field;
+  const worklog = allWorklogs.find(w => w.id === id);
+  if (!worklog) return;
+
+  const value = worklog[field];
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'form-control form-control-sm';
+  input.style.width = '5em';
+  input.min = '0';
+  input.step = field === 'hours' ? '0.5' : '1';
+  input.value = value;
+
+  td.textContent = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newVal = Number(input.value);
+    if (isNaN(newVal) || newVal < 0) { renderTable(); return; }
+    if (newVal === value) { renderTable(); return; }
+    input.disabled = true;
+    try {
+      await updateWorklog(id, { [field]: newVal });
+      worklog[field] = newVal;
+    } catch (err) {
+      console.error(err);
+    }
+    renderTable();
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { renderTable(); }
+  });
 }
 
 async function handleSubmit(e) {

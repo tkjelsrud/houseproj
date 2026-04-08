@@ -251,6 +251,10 @@ body {
 .remaining-positive { color: #2a7a2a; font-weight: 600; }
 .remaining-negative { color: #b00000; font-weight: 600; }
 
+/* ── Editable cells ── */
+td.editable { cursor: pointer; }
+td.editable:hover { background-color: #f0f0f0; }
+
 /* ── Mobile ── */
 @media (max-width: 576px) {
   .stat-value { font-size: 1.1rem; }
