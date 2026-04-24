@@ -6,6 +6,35 @@ export function normalizeExpenseCategory(category) {
   return trimmed || UNDEFINED_CATEGORY;
 }
 
+function normalizeComparisonValue(value) {
+  return value.trim().toLocaleLowerCase('nb');
+}
+
+export function normalizeMemberName(name, memberNames = []) {
+  if (typeof name !== 'string') return '';
+
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+
+  const normalizedInput = normalizeComparisonValue(trimmed);
+  let prefixMatch = '';
+
+  for (const memberName of memberNames) {
+    if (typeof memberName !== 'string') continue;
+
+    const canonicalName = memberName.trim();
+    if (!canonicalName) continue;
+
+    const normalizedCanonical = normalizeComparisonValue(canonicalName);
+    if (normalizedInput === normalizedCanonical) return canonicalName;
+    if (!normalizedInput.startsWith(normalizedCanonical + ' ')) continue;
+    if (canonicalName.length <= prefixMatch.length) continue;
+    prefixMatch = canonicalName;
+  }
+
+  return prefixMatch || trimmed;
+}
+
 export function getKnownCategories(defaultCategories = [], expenses = []) {
   const seen = new Set();
   const orderedDefaults = [];
@@ -39,11 +68,10 @@ export function getMemberSuggestions(currentDisplayName, memberNames = []) {
   const seen = new Set();
 
   for (const name of [currentDisplayName, ...memberNames]) {
-    if (typeof name !== 'string') continue;
-    const trimmed = name.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    values.push(trimmed);
+    const normalized = normalizeMemberName(name, memberNames);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    values.push(normalized);
   }
 
   return values;

@@ -6,7 +6,8 @@ import {
   resolveCategorySelection,
   getMemberSuggestions,
   getSupplierSuggestions,
-  normalizeExpenseCategory
+  normalizeExpenseCategory,
+  normalizeMemberName
 } from '../js/lib/expense-options.js';
 
 test('getKnownCategories preserves configured order and appends sorted extras', () => {
@@ -31,6 +32,12 @@ test('resolveCategorySelection preserves explicit selection or falls back to mos
 test('getMemberSuggestions puts current display name first and removes duplicates', () => {
   const members = getMemberSuggestions('Alex', ['Robin', 'Alex', 'Robin', 'Chris']);
   assert.deepEqual(members, ['Alex', 'Robin', 'Chris']);
+});
+
+test('normalizeMemberName maps full display names to configured member names', () => {
+  assert.equal(normalizeMemberName('Owner Alpha Example', ['Owner Alpha', 'Owner Beta']), 'Owner Alpha');
+  assert.equal(normalizeMemberName(' owner beta ', ['Owner Alpha', 'Owner Beta']), 'Owner Beta');
+  assert.equal(normalizeMemberName('Guest User', ['Owner Alpha', 'Owner Beta']), 'Guest User');
 });
 
 test('getSupplierSuggestions merges config suggestions with historical suppliers', () => {

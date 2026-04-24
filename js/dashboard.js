@@ -247,7 +247,7 @@ function renderCategoryTable(realExpenses, budgets) {
 }
 
 function renderPersonBalance(realExpenses, transfers) {
-  const balance = calculatePersonBalance(realExpenses, transfers);
+  const balance = calculatePersonBalance(realExpenses, transfers, appConfig.memberNames);
   const el = document.getElementById('person-balance');
   if (!el) return;
 

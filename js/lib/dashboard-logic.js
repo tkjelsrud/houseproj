@@ -1,4 +1,4 @@
-import { normalizeExpenseCategory } from './expense-options.js';
+import { normalizeExpenseCategory, normalizeMemberName } from './expense-options.js';
 import { isSunkCostExpense } from './expense-flags.js';
 
 function toAmount(value) {
@@ -152,12 +152,14 @@ export function buildCategoryRows(realExpenses = [], budgets = []) {
   });
 }
 
-export function calculatePersonBalance(realExpenses = [], transfers = [], threshold = 10) {
+export function calculatePersonBalance(realExpenses = [], transfers = [], memberNamesOrThreshold = [], threshold = 10) {
+  const memberNames = Array.isArray(memberNamesOrThreshold) ? memberNamesOrThreshold : [];
+  const effectiveThreshold = Array.isArray(memberNamesOrThreshold) ? threshold : memberNamesOrThreshold;
   const totalsByPerson = {};
   const sunkByPerson = {};
 
   for (const expense of realExpenses) {
-    const name = (expense.purchasedBy || '').trim() || 'Ukjent';
+    const name = normalizeMemberName(expense.purchasedBy, memberNames) || 'Ukjent';
     if (isSunkCostExpense(expense)) {
       sunkByPerson[name] = (sunkByPerson[name] || 0) + toAmount(expense.amount);
       continue;
@@ -192,7 +194,7 @@ export function calculatePersonBalance(realExpenses = [], transfers = [], thresh
   let net = sorted[0].amount - total / 2;
 
   for (const transfer of transfers) {
-    const from = (transfer.purchasedBy || '').trim();
+    const from = normalizeMemberName(transfer.purchasedBy, memberNames);
     const amount = toAmount(transfer.amount);
     if (from === sorted[1].name) net -= amount;
     else if (from === sorted[0].name) net += amount;
@@ -200,7 +202,7 @@ export function calculatePersonBalance(realExpenses = [], transfers = [], thresh
 
   const totalTransfers = transfers.reduce((sum, transfer) => sum + toAmount(transfer.amount), 0);
   const totalSunk = Object.values(sunkByPerson).reduce((sum, value) => sum + value, 0);
-  const isBalanced = Math.abs(net) <= threshold;
+  const isBalanced = Math.abs(net) <= effectiveThreshold;
 
   if (isBalanced) {
     return {

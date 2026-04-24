@@ -156,6 +156,28 @@ test('calculatePersonBalance excludes sunk cost rows from distribution', () => {
   });
 });
 
+test('calculatePersonBalance merges display-name variants using configured member names', () => {
+  const balance = calculatePersonBalance(
+    [
+      { purchasedBy: 'Owner Alpha Example', amount: 700 },
+      { purchasedBy: 'Owner Alpha', amount: 300 },
+      { purchasedBy: 'Owner Beta', amount: 500 }
+    ],
+    [],
+    ['Owner Alpha', 'Owner Beta']
+  );
+
+  assert.deepEqual(balance.rows, [
+    { name: 'Owner Alpha', amount: 1000, share: 67 },
+    { name: 'Owner Beta', amount: 500, share: 33 }
+  ]);
+  assert.deepEqual(balance.settlement, {
+    debtor: 'Owner Beta',
+    creditor: 'Owner Alpha',
+    amount: 250
+  });
+});
+
 test('worklog helpers apply numberOfPeople fallback and total cost', () => {
   assert.equal(getEffectiveHours({ hours: 3, numberOfPeople: 2 }), 6);
   assert.equal(getEffectiveHours({ hours: 3 }), 3);

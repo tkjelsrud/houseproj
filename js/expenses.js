@@ -6,7 +6,8 @@ import {
   resolveCategorySelection,
   getMemberSuggestions,
   getSupplierSuggestions,
-  normalizeExpenseCategory
+  normalizeExpenseCategory,
+  normalizeMemberName
 } from './lib/expense-options.js';
 import { isSunkCostExpense, normalizeExpenseFlags } from './lib/expense-flags.js';
 
@@ -39,7 +40,9 @@ requireAuth(async (user) => {
   populateSupplierList();
 
   // Default "Kjøpt av" to logged-in user's display name
-  currentDisplayName = user.displayName || user.email;
+  currentDisplayName = normalizeMemberName(user.displayName || user.email, appConfig.memberNames)
+    || user.displayName
+    || user.email;
   document.getElementById('exp-purchased-by').value = currentDisplayName;
   populateMemberList();
 
@@ -374,7 +377,10 @@ async function handleSubmit(e) {
     category,
     supplierName: document.getElementById('exp-supplier').value,
     description: document.getElementById('exp-desc').value,
-    purchasedBy: document.getElementById('exp-purchased-by').value.trim() || currentDisplayName,
+    purchasedBy: normalizeMemberName(
+      document.getElementById('exp-purchased-by').value,
+      appConfig.memberNames
+    ) || currentDisplayName,
     allocated: flags.allocated,
     transfer: flags.transfer,
     sunkCost: flags.sunkCost
