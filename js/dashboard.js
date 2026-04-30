@@ -8,6 +8,7 @@ import {
   buildCategoryChartData,
   buildBudgetAnnotations,
   buildCategoryRows,
+  buildTransferDirectionRows,
   calculatePersonBalance,
   aggregateContractors
 } from './lib/dashboard-logic.js';
@@ -263,6 +264,14 @@ function renderPersonBalance(realExpenses, transfers) {
       <td class="text-muted">${row.share}%</td>
     </tr>
   `).join('');
+  const transferRows = buildTransferDirectionRows(transfers, balance.rows.map((row) => row.name));
+  const transferTableHtml = transferRows.map((row) => `
+    <tr class="person-balance-transfer-row">
+      <td>Overføring ${row.from} -&gt; ${row.to}</td>
+      <td>${nok(row.amount)}</td>
+      <td class="text-muted">—</td>
+    </tr>
+  `).join('');
 
   let balanceHtml = '';
   if (balance.isBalanced) {
@@ -300,7 +309,7 @@ function renderPersonBalance(realExpenses, transfers) {
             <th>Andel</th>
           </tr>
         </thead>
-        <tbody>${tableHtml}</tbody>
+        <tbody>${tableHtml}${transferTableHtml}</tbody>
       </table>
     </div>
   ` : '';

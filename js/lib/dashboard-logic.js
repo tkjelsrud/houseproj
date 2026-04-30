@@ -156,6 +156,36 @@ export function buildCategoryRows(realExpenses = [], budgets = []) {
   });
 }
 
+export function buildTransferDirectionRows(transfers = [], participantNames = []) {
+  const names = Array.from(new Set(
+    participantNames
+      .map((name) => normalizeMemberName(name, participantNames))
+      .filter(Boolean)
+  ));
+
+  if (names.length !== 2) return [];
+
+  const totalsByDirection = new Map();
+
+  for (const transfer of transfers) {
+    const from = normalizeMemberName(transfer?.purchasedBy, names);
+    if (!from || !names.includes(from)) continue;
+
+    const to = names.find((name) => name !== from);
+    if (!to) continue;
+
+    const key = `${from}\u0000${to}`;
+    totalsByDirection.set(key, (totalsByDirection.get(key) || 0) + toAmount(transfer.amount));
+  }
+
+  return names.flatMap((from) => {
+    const to = names.find((name) => name !== from);
+    const key = `${from}\u0000${to}`;
+    const amount = totalsByDirection.get(key) || 0;
+    return amount > 0 ? [{ from, to, amount }] : [];
+  });
+}
+
 export function calculatePersonBalance(realExpenses = [], transfers = [], memberNamesOrThreshold = [], threshold = 10) {
   const memberNames = Array.isArray(memberNamesOrThreshold) ? memberNamesOrThreshold : [];
   const effectiveThreshold = Array.isArray(memberNamesOrThreshold) ? threshold : memberNamesOrThreshold;

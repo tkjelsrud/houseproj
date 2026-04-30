@@ -136,6 +136,15 @@ body {
   vertical-align: middle;
 }
 
+.person-balance-transfer-row td {
+  background: #fafcff;
+}
+
+.person-balance-transfer-row td:first-child {
+  color: #4663a8;
+  font-weight: 500;
+}
+
 .table-responsive {
   -webkit-overflow-scrolling: touch;
 }

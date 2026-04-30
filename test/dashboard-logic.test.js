@@ -6,6 +6,7 @@ import {
   calculateSummary,
   buildBudgetAnnotations,
   buildCategoryRows,
+  buildTransferDirectionRows,
   calculatePersonBalance,
   getEffectiveHours,
   getWorklogCost,
@@ -218,6 +219,29 @@ test('calculatePersonBalance infers aliases from observed participant names', ()
     creditor: 'Owner Alpha Example',
     amount: 5000
   });
+});
+
+test('buildTransferDirectionRows groups transfer totals by direction', () => {
+  const rows = buildTransferDirectionRows(
+    [
+      { purchasedBy: 'Owner Beta', amount: 60000 },
+      { purchasedBy: 'Owner Beta Example', amount: 46000 },
+      { purchasedBy: 'Owner Alpha Example', amount: 12000 }
+    ],
+    ['Owner Alpha Example', 'Owner Beta Example']
+  );
+
+  assert.deepEqual(rows, [
+    { from: 'Owner Alpha Example', to: 'Owner Beta Example', amount: 12000 },
+    { from: 'Owner Beta Example', to: 'Owner Alpha Example', amount: 106000 }
+  ]);
+});
+
+test('buildTransferDirectionRows skips directional summary for non-pair balances', () => {
+  assert.deepEqual(
+    buildTransferDirectionRows([{ purchasedBy: 'Owner A', amount: 100 }], ['Owner A', 'Owner B', 'Owner C']),
+    []
+  );
 });
 
 test('worklog helpers apply numberOfPeople fallback and total cost', () => {
