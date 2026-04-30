@@ -168,13 +168,55 @@ test('calculatePersonBalance merges display-name variants using configured membe
   );
 
   assert.deepEqual(balance.rows, [
-    { name: 'Owner Alpha', amount: 1000, share: 67 },
+    { name: 'Owner Alpha Example', amount: 1000, share: 67 },
     { name: 'Owner Beta', amount: 500, share: 33 }
   ]);
   assert.deepEqual(balance.settlement, {
     debtor: 'Owner Beta',
-    creditor: 'Owner Alpha',
+    creditor: 'Owner Alpha Example',
     amount: 250
+  });
+});
+
+test('calculatePersonBalance applies transfer amounts after alias normalization', () => {
+  const balance = calculatePersonBalance(
+    [
+      { purchasedBy: 'Owner Alpha', amount: 140000 },
+      { purchasedBy: 'Owner Beta Example', amount: 20000 }
+    ],
+    [{ purchasedBy: 'Owner Beta', amount: 60000 }],
+    ['Owner Alpha Example', 'Owner Beta Example']
+  );
+
+  assert.deepEqual(balance.rows, [
+    { name: 'Owner Alpha Example', amount: 140000, share: 88 },
+    { name: 'Owner Beta Example', amount: 20000, share: 13 }
+  ]);
+  assert.equal(balance.totalTransfers, 60000);
+  assert.equal(balance.isBalanced, true);
+  assert.equal(balance.settlement, null);
+});
+
+test('calculatePersonBalance infers aliases from observed participant names', () => {
+  const balance = calculatePersonBalance(
+    [
+      { purchasedBy: 'Owner Alpha', amount: 140000 },
+      { purchasedBy: 'Owner Beta', amount: 20000 },
+      { purchasedBy: 'Owner Alpha Example', amount: 10000 }
+    ],
+    [{ purchasedBy: 'Owner Beta Example', amount: 60000 }]
+  );
+
+  assert.deepEqual(balance.rows, [
+    { name: 'Owner Alpha Example', amount: 150000, share: 88 },
+    { name: 'Owner Beta Example', amount: 20000, share: 12 }
+  ]);
+  assert.equal(balance.totalTransfers, 60000);
+  assert.equal(balance.isBalanced, false);
+  assert.deepEqual(balance.settlement, {
+    debtor: 'Owner Beta Example',
+    creditor: 'Owner Alpha Example',
+    amount: 5000
   });
 });
 
@@ -225,6 +267,31 @@ test('buildRecentActivity sorts by createdAt descending and preserves labels', (
   assert.equal(recent[0].type, 'Timer');
   assert.equal(recent[0].value, 4);
   assert.equal(recent[1].label, 'Alpha – Shop One');
+});
+
+test('buildRecentActivity includes transfers as currency entries', () => {
+  const timestamp = (value) => ({ toMillis: () => value });
+  const recent = buildRecentActivity(
+    [
+      {
+        amount: 106000,
+        transfer: true,
+        date: '2026-04-29',
+        createdAt: timestamp(30)
+      }
+    ],
+    []
+  );
+
+  assert.deepEqual(recent[0], {
+    type: 'Overføring',
+    date: '2026-04-29',
+    label: 'Overføring',
+    detail: '',
+    value: 106000,
+    valueType: 'currency',
+    ts: 30
+  });
 });
 
 test('isSunkCostExpense supports explicit flag and legacy description fallback', () => {

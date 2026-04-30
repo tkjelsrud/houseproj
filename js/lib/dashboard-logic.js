@@ -45,11 +45,14 @@ function toMillis(item) {
 
 export function buildRecentActivity(expenses = [], worklogs = [], limit = 3) {
   const expenseItems = expenses.map((expense) => ({
-    type: 'Utgift',
+    type: expense.transfer ? 'Overføring' : 'Utgift',
     date: expense.date,
-    label: normalizeExpenseCategory(expense.category) + (expense.supplierName ? ` – ${expense.supplierName}` : ''),
+    label: expense.transfer
+      ? 'Overføring'
+      : normalizeExpenseCategory(expense.category) + (expense.supplierName ? ` – ${expense.supplierName}` : ''),
     detail: expense.description || '',
     value: toAmount(expense.amount),
+    valueType: 'currency',
     ts: toMillis(expense)
   }));
 
@@ -59,6 +62,7 @@ export function buildRecentActivity(expenses = [], worklogs = [], limit = 3) {
     label: worklog.contractorName,
     detail: worklog.taskDescription || '',
     value: getEffectiveHours(worklog),
+    valueType: 'hours',
     ts: toMillis(worklog)
   }));
 
@@ -155,11 +159,16 @@ export function buildCategoryRows(realExpenses = [], budgets = []) {
 export function calculatePersonBalance(realExpenses = [], transfers = [], memberNamesOrThreshold = [], threshold = 10) {
   const memberNames = Array.isArray(memberNamesOrThreshold) ? memberNamesOrThreshold : [];
   const effectiveThreshold = Array.isArray(memberNamesOrThreshold) ? threshold : memberNamesOrThreshold;
+  const participantNames = Array.from(new Set([
+    ...memberNames,
+    ...realExpenses.map((expense) => expense?.purchasedBy),
+    ...transfers.map((transfer) => transfer?.purchasedBy)
+  ].filter((name) => typeof name === 'string' && name.trim())));
   const totalsByPerson = {};
   const sunkByPerson = {};
 
   for (const expense of realExpenses) {
-    const name = normalizeMemberName(expense.purchasedBy, memberNames) || 'Ukjent';
+    const name = normalizeMemberName(expense.purchasedBy, participantNames) || 'Ukjent';
     if (isSunkCostExpense(expense)) {
       sunkByPerson[name] = (sunkByPerson[name] || 0) + toAmount(expense.amount);
       continue;
@@ -194,7 +203,7 @@ export function calculatePersonBalance(realExpenses = [], transfers = [], member
   let net = sorted[0].amount - total / 2;
 
   for (const transfer of transfers) {
-    const from = normalizeMemberName(transfer.purchasedBy, memberNames);
+    const from = normalizeMemberName(transfer.purchasedBy, participantNames);
     const amount = toAmount(transfer.amount);
     if (from === sorted[1].name) net -= amount;
     else if (from === sorted[0].name) net += amount;

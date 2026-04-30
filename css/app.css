@@ -213,6 +213,17 @@ body {
   border-radius: 3px;
   margin-right: 4px;
 }
+.transfer-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #eef3ff;
+  color: #4663a8;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
 
 /* ── Archive button ── */
 .btn-archive {

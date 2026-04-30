@@ -281,25 +281,26 @@ function wireExclusiveExpenseFlags() {
 
 function renderTable() {
   const filterCat = document.getElementById('filter-category').value;
-  const visible = allExpenses.filter(e => !e.transfer);
   const normalizedRows = filterCat
-    ? visible.filter((e) => normalizeExpenseCategory(e.category) === filterCat)
-    : visible;
+    ? allExpenses.filter((e) => normalizeExpenseCategory(e.category) === filterCat)
+    : allExpenses;
 
   if (normalizedRows.length === 0) {
     document.getElementById('expense-tbody').innerHTML =
-      '<tr><td colspan="7" class="text-muted text-center">Ingen utgifter ennå</td></tr>';
+      '<tr><td colspan="7" class="text-muted text-center">Ingen registreringer ennå</td></tr>';
     document.getElementById('expense-total').textContent = '';
     return;
   }
 
-  const realTotal = normalizedRows.filter(e => !e.allocated).reduce((s, e) => s + e.amount, 0);
+  const realTotal = normalizedRows.filter(e => !e.allocated && !e.transfer).reduce((s, e) => s + e.amount, 0);
   const allocTotal = normalizedRows.filter(e => e.allocated).reduce((s, e) => s + e.amount, 0);
+  const transferTotal = normalizedRows.filter(e => e.transfer).reduce((s, e) => s + e.amount, 0);
 
   let html = '';
   for (const e of normalizedRows) {
     const isEditingCategory = editingExpenseId === e.id;
     const allocBadge = e.allocated ? '<span class="alloc-badge">Allokert</span> ' : '';
+    const transferBadge = e.transfer ? '<span class="transfer-badge">Overføring</span> ' : '';
     const sunkBadge = isSunkCostExpense(e) ? '<span class="alloc-badge">Egen kost</span> ' : '';
     const rowClass   = e.allocated ? ' class="row-allocated"' : '';
     const categoryOptions = allKnownCategories()
@@ -318,7 +319,9 @@ function renderTable() {
           value="${editingCategoryValue === '__new__' ? escapeHtml(editingCategoryNewValue) : ''}"
         />
       </div>
-    ` : normalizeExpenseCategory(e.category);
+    ` : (e.transfer && normalizeExpenseCategory(e.category) === 'Udefinert'
+      ? 'Overføring'
+      : normalizeExpenseCategory(e.category));
     const actionCell = isEditingCategory ? `
       <div class="d-flex flex-wrap gap-1 justify-content-end">
         <button class="btn btn-sm btn-primary btn-category-save" data-id="${e.id}">Lagre</button>
@@ -336,11 +339,11 @@ function renderTable() {
     `;
     html += `<tr${rowClass}>
       <td>${e.date}</td>
-      <td>${allocBadge}${sunkBadge}${nok(e.amount)}</td>
+      <td>${allocBadge}${transferBadge}${sunkBadge}${nok(e.amount)}</td>
       <td>${categoryCell}</td>
       <td>${e.supplierName || '—'}</td>
       <td>${e.description || '—'}</td>
-      <td>${e.purchasedBy || '—'}</td>
+      <td>${normalizeMemberName(e.purchasedBy, appConfig.memberNames) || e.purchasedBy || '—'}</td>
       <td>
         ${actionCell}
       </td>
@@ -350,6 +353,7 @@ function renderTable() {
 
   let totalText = `Totalt brukt: ${nok(realTotal)}`;
   if (allocTotal > 0) totalText += `  ·  Allokert: ${nok(allocTotal)}`;
+  if (transferTotal > 0) totalText += `  ·  Overføringer: ${nok(transferTotal)}`;
   document.getElementById('expense-total').textContent = totalText;
 }
 

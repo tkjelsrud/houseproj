@@ -65,7 +65,7 @@ async function loadDashboard() {
 
     populateBudgetCategoryList(expenses, budgets);
     renderSummary(realExpenses, worklogs, allocExpenses);
-    renderRecentActivity(realExpenses, worklogs);
+    renderRecentActivity(expenses, worklogs);
     renderCategoryChart(realExpenses, allocExpenses, budgets);
     renderCategoryTable(realExpenses, budgets);
     renderContractorTable(worklogs);
@@ -133,8 +133,8 @@ function renderSummary(realExpenses, worklogs, allocExpenses) {
   document.getElementById('total-all').textContent = nok(summary.totalAll);
 }
 
-function renderRecentActivity(realExpenses, worklogs) {
-  const recent = buildRecentActivity(realExpenses, worklogs);
+function renderRecentActivity(expenses, worklogs) {
+  const recent = buildRecentActivity(expenses, worklogs);
 
   if (recent.length === 0) {
     document.getElementById('recent-list').innerHTML =
@@ -150,7 +150,7 @@ function renderRecentActivity(realExpenses, worklogs) {
         ${item.detail ? `<div class="text-muted" style="font-size:0.8rem">${item.detail}</div>` : ''}
       </div>
       <div class="text-end">
-        <div class="fw-semibold small">${item.type === 'Utgift' ? nok(item.value) : `${item.value.toFixed(1)} t`}</div>
+        <div class="fw-semibold small">${item.valueType === 'hours' ? `${item.value.toFixed(1)} t` : nok(item.value)}</div>
         <div class="text-muted" style="font-size:0.75rem">${item.date}</div>
       </div>
     </div>

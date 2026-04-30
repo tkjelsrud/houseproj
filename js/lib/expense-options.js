@@ -10,29 +10,55 @@ function normalizeComparisonValue(value) {
   return value.trim().toLocaleLowerCase('nb');
 }
 
+function tokenizeComparisonValue(value) {
+  return normalizeComparisonValue(value).split(/\s+/).filter(Boolean);
+}
+
+function startsWithTokens(valueTokens, prefixTokens) {
+  if (prefixTokens.length === 0 || prefixTokens.length > valueTokens.length) return false;
+  return prefixTokens.every((token, index) => valueTokens[index] === token);
+}
+
 export function normalizeMemberName(name, memberNames = []) {
   if (typeof name !== 'string') return '';
 
   const trimmed = name.trim();
   if (!trimmed) return '';
 
+  const configuredNames = memberNames
+    .filter((memberName) => typeof memberName === 'string')
+    .map((memberName) => memberName.trim())
+    .filter(Boolean);
   const normalizedInput = normalizeComparisonValue(trimmed);
+  const inputTokens = tokenizeComparisonValue(trimmed);
+
+  let exactMatch = '';
   let prefixMatch = '';
+  let reversePrefixMatch = '';
+  let reversePrefixCount = 0;
 
-  for (const memberName of memberNames) {
-    if (typeof memberName !== 'string') continue;
-
-    const canonicalName = memberName.trim();
-    if (!canonicalName) continue;
+  for (const canonicalName of configuredNames) {
+    const canonicalTokens = tokenizeComparisonValue(canonicalName);
 
     const normalizedCanonical = normalizeComparisonValue(canonicalName);
-    if (normalizedInput === normalizedCanonical) return canonicalName;
-    if (!normalizedInput.startsWith(normalizedCanonical + ' ')) continue;
-    if (canonicalName.length <= prefixMatch.length) continue;
-    prefixMatch = canonicalName;
+    if (normalizedInput === normalizedCanonical) {
+      exactMatch = canonicalName;
+      continue;
+    }
+    if (startsWithTokens(inputTokens, canonicalTokens)) {
+      if (canonicalName.length > prefixMatch.length) {
+        prefixMatch = canonicalName;
+      }
+      continue;
+    }
+    if (!startsWithTokens(canonicalTokens, inputTokens)) continue;
+    reversePrefixCount += 1;
+    if (canonicalName.length <= reversePrefixMatch.length) continue;
+    reversePrefixMatch = canonicalName;
   }
 
-  return prefixMatch || trimmed;
+  if (reversePrefixCount === 1 && reversePrefixMatch) return reversePrefixMatch;
+  return exactMatch || prefixMatch || trimmed;
 }
 
 export function getKnownCategories(defaultCategories = [], expenses = []) {

@@ -40,6 +40,18 @@ test('normalizeMemberName maps full display names to configured member names', (
   assert.equal(normalizeMemberName('Guest User', ['Owner Alpha', 'Owner Beta']), 'Guest User');
 });
 
+test('normalizeMemberName maps shortened names to a unique configured full name', () => {
+  assert.equal(normalizeMemberName('Owner Alpha', ['Owner Alpha Example', 'Owner Beta']), 'Owner Alpha Example');
+  assert.equal(normalizeMemberName('Owner Beta Example', ['Owner Alpha', 'Owner Beta']), 'Owner Beta');
+});
+
+test('normalizeMemberName prefers a unique full-name expansion over an exact short alias', () => {
+  assert.equal(
+    normalizeMemberName('Owner Alpha', ['Owner Alpha', 'Owner Alpha Example', 'Owner Beta']),
+    'Owner Alpha Example'
+  );
+});
+
 test('getSupplierSuggestions merges config suggestions with historical suppliers', () => {
   const suppliers = getSupplierSuggestions(
     ['Supplier One'],
