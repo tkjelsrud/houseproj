@@ -84,7 +84,7 @@ test('normalizeAppConfig falls back to generic public app name', () => {
 });
 
 test('public HTML keeps generic branding before runtime config loads', () => {
-  for (const fileName of ['index.html', 'dashboard.html', 'expenses.html', 'worklogs.html']) {
+  for (const fileName of ['index.html', 'dashboard.html', 'expenses.html', 'worklogs.html', 'control.html']) {
     const html = fs.readFileSync(path.join(rootDir, fileName), 'utf8');
     assert.match(html, /Husprosjekt/);
   }

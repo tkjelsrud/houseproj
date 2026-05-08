@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Husprosjekt — Control</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <nav class="navbar navbar-dark">
+    <div class="container d-flex align-items-center gap-3">
+      <a class="navbar-brand me-2" href="dashboard.html">Husprosjekt</a>
+      <a class="nav-link" href="dashboard.html">Oversikt</a>
+      <a class="nav-link" href="expenses.html">Utgifter</a>
+      <a class="nav-link" href="worklogs.html">Arbeidslogg</a>
+      <a class="nav-link active" href="control.html">Control</a>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span class="text-white-50 small d-none d-sm-inline" id="user-email"></span>
+        <button id="logout-btn" class="btn btn-outline-light btn-sm">Logg ut</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 gap-2 flex-wrap">
+      <div>
+        <h2 class="h4 mb-1">Control</h2>
+        <p class="text-muted small mb-0">Live kontrollside som bruker faktiske Firestore-data og uavhengige summer for sanity check.</p>
+      </div>
+      <button id="refresh-btn" class="btn btn-outline-secondary btn-sm">Oppdater</button>
+    </div>
+
+    <div class="alert alert-secondary small">
+      Firebase Auth-brukere kan ikke listes fra en ren klientapp. Siden kontrollerer derfor <strong>konfigurert tilgangsliste</strong> via `allowedUids`, i tillegg til faktiske utgifter, arbeidslogger og summer i Firestore.
+    </div>
+
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border text-secondary" role="status"></div>
+    </div>
+
+    <div id="load-error" class="alert alert-danger d-none"></div>
+
+    <div id="content" class="d-none">
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <div class="stat-label">Kontroller</div>
+              <div class="stat-value" id="check-summary">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <div class="stat-label">Transaksjoner</div>
+              <div class="stat-value" id="current-transactions">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <div class="stat-label">Transaksjoner i år</div>
+              <div class="stat-value" id="current-year-transactions">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <div class="stat-label">Totalt inkl. arbeid</div>
+              <div class="stat-value" id="current-total">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <div class="stat-label">Mistenkelige datoer</div>
+              <div class="stat-value" id="suspicious-count">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card form-card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+              <h3 class="section-title mb-1">Forventninger</h3>
+              <p class="text-muted small mb-0">Sett terskler manuelt, eller bruk dagens live-data som baseline for fremtidige kontroller.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" id="use-live-baseline-btn" class="btn btn-outline-primary btn-sm">Bruk dagens data</button>
+              <button type="button" id="clear-baseline-btn" class="btn btn-outline-secondary btn-sm">Nullstill baseline</button>
+            </div>
+          </div>
+
+          <form id="control-form" class="row g-3 align-items-end">
+            <div class="col-6 col-md-2">
+              <label for="expected-allowed-users" class="form-label">Tillatte UID-er</label>
+              <input type="number" id="expected-allowed-users" class="form-control" min="0" step="1" />
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="expected-members" class="form-label">Prosjektmedlemmer</label>
+              <input type="number" id="expected-members" class="form-control" min="0" step="1" />
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="min-expenses" class="form-label">Min. utgifter</label>
+              <input type="number" id="min-expenses" class="form-control" min="0" step="1" />
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="min-worklogs" class="form-label">Min. arbeidslogger</label>
+              <input type="number" id="min-worklogs" class="form-control" min="0" step="1" />
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="min-transactions" class="form-label">Min. transaksjoner</label>
+              <input type="number" id="min-transactions" class="form-control" min="0" step="1" />
+            </div>
+            <div class="col-6 col-md-2">
+              <label for="min-year-transactions" class="form-label">Min. i år</label>
+              <input type="number" id="min-year-transactions" class="form-control" min="0" step="1" />
+            </div>
+            <div class="col-12 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+              <span id="baseline-status" class="text-muted small"></span>
+              <button type="submit" class="btn btn-primary">Kjør kontroller</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-12 col-lg-5">
+          <div class="card h-100">
+            <div class="card-body">
+              <h3 class="section-title">Live snapshot</h3>
+              <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                  <tbody id="snapshot-table-body">
+                    <tr><td colspan="2" class="text-muted text-center">Laster…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+          <div class="card h-100">
+            <div class="card-body">
+              <h3 class="section-title">Resultater</h3>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Status</th>
+                      <th>Kontroll</th>
+                      <th>Detalj</th>
+                    </tr>
+                  </thead>
+                  <tbody id="checks-table-body">
+                    <tr><td colspan="3" class="text-muted text-center">Laster…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+              <h3 class="section-title mb-1">Dato-audit</h3>
+              <p class="text-muted small mb-0">Sett tidligste gyldige dato, for eksempel når prosjektet faktisk startet, og få forslag som beholder måned/dag men flytter året frem.</p>
+            </div>
+            <div class="col-12 col-md-3 px-0">
+              <label for="date-audit-cutoff" class="form-label">Tidligste gyldige dato</label>
+              <input type="date" id="date-audit-cutoff" class="form-control" />
+            </div>
+          </div>
+
+          <p id="date-audit-info" class="text-muted small mb-3">Sett tidligste gyldige prosjektdato for å finne mistenkelige importdatoer.</p>
+
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Type</th>
+                  <th>Nåværende dato</th>
+                  <th>Foreslått dato</th>
+                  <th>Beskrivelse</th>
+                  <th>Verdi</th>
+                  <th>Handling</th>
+                </tr>
+              </thead>
+              <tbody id="suspicious-dates-body">
+                <tr><td colspan="6" class="text-muted text-center">Ingen audit kjørt ennå</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module">
+    import { logout } from './js/auth.js';
+    import './js/control.js';
+    document.getElementById('logout-btn').addEventListener('click', logout);
+  </script>
+</body>
+</html>

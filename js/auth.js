@@ -22,6 +22,10 @@ async function loadRuntimeConfig() {
   }
 }
 
+export async function getRuntimeConfig() {
+  return loadRuntimeConfig();
+}
+
 function redirectToIndex(reason = '') {
   const url = new URL('index.html', window.location.href);
   if (reason) url.searchParams.set('reason', reason);
@@ -29,7 +33,7 @@ function redirectToIndex(reason = '') {
 }
 
 export async function isAuthorizedUser(user) {
-  const runtimeConfig = await loadRuntimeConfig();
+  const runtimeConfig = await getRuntimeConfig();
   const allowedUids = Array.isArray(runtimeConfig.allowedUids) ? runtimeConfig.allowedUids : [];
   if (allowedUids.length === 0) return true;
   return allowedUids.includes(user.uid);
