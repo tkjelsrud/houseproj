@@ -37,7 +37,8 @@
             </div>
             <div class="col-6 col-md-3">
               <label for="exp-amount" class="form-label">Beløp (kr)</label>
-              <input type="number" id="exp-amount" class="form-control" min="0" step="1" placeholder="0" required />
+              <input type="text" id="exp-amount" class="form-control" inputmode="numeric" placeholder="0 eller 100+200+300" required />
+              <div id="exp-amount-preview" class="form-text" style="min-height:1.2em"></div>
             </div>
             <div class="col-12 col-md-3">
               <label for="exp-category" class="form-label">Kategori</label>

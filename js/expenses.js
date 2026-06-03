@@ -10,9 +10,31 @@ import {
   normalizeMemberName
 } from './lib/expense-options.js';
 import { isSunkCostExpense, normalizeExpenseFlags } from './lib/expense-flags.js';
+import { parseAmountExpression } from './lib/amount-expression.js';
 
 const nok = (n) =>
   new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 0 }).format(n);
+
+function updateAmountPreview() {
+  const input = document.getElementById('exp-amount');
+  const preview = document.getElementById('exp-amount-preview');
+  const raw = input.value;
+  if (!raw.includes('+')) {
+    preview.textContent = '';
+    input.setCustomValidity('');
+    return;
+  }
+  const sum = parseAmountExpression(raw);
+  if (sum === null) {
+    preview.textContent = 'Ugyldig uttrykk';
+    preview.className = 'form-text text-danger';
+    input.setCustomValidity('Ugyldig beløp');
+  } else {
+    preview.textContent = `= ${nok(sum)}`;
+    preview.className = 'form-text text-muted';
+    input.setCustomValidity('');
+  }
+}
 
 let currentUser = null;
 let allExpenses = [];
@@ -69,6 +91,8 @@ requireAuth(async (user) => {
   });
 
   wireExclusiveExpenseFlags();
+
+  document.getElementById('exp-amount').addEventListener('input', updateAmountPreview);
 
   await loadExpenses();
 
@@ -337,9 +361,12 @@ function renderTable() {
         <button class="btn-archive" data-id="${e.id}" title="Arkiver">×</button>
       </div>
     `;
+    const exprHint = e.amountExpression
+      ? `<br><span class="text-muted" style="font-size:0.72em">${escapeHtml(e.amountExpression)}</span>`
+      : '';
     html += `<tr${rowClass}>
       <td>${e.date}</td>
-      <td>${allocBadge}${transferBadge}${sunkBadge}${nok(e.amount)}</td>
+      <td>${allocBadge}${transferBadge}${sunkBadge}${nok(e.amount)}${exprHint}</td>
       <td>${categoryCell}</td>
       <td>${e.supplierName || '—'}</td>
       <td>${e.description || '—'}</td>
@@ -375,9 +402,20 @@ async function handleSubmit(e) {
 
   applyExpenseFlagState(flags);
 
+  const rawAmount = document.getElementById('exp-amount').value;
+  const parsedAmount = parseAmountExpression(rawAmount) ?? Number(rawAmount.trim());
+  if (!parsedAmount || parsedAmount <= 0) {
+    document.getElementById('exp-amount').setCustomValidity('Ugyldig beløp');
+    document.getElementById('exp-amount').reportValidity();
+    btn.disabled = false;
+    return;
+  }
+  document.getElementById('exp-amount').setCustomValidity('');
+
   const data = {
     date: document.getElementById('exp-date').value,
-    amount: document.getElementById('exp-amount').value,
+    amount: parsedAmount,
+    amountExpression: rawAmount.trim().includes('+') ? rawAmount.trim() : '',
     category,
     supplierName: document.getElementById('exp-supplier').value,
     description: document.getElementById('exp-desc').value,
@@ -394,6 +432,7 @@ async function handleSubmit(e) {
     await addExpense(data, currentUser.uid);
     const savedCategory = category; // remember before reset
     e.target.reset();
+    updateAmountPreview();
     document.getElementById('exp-date').valueAsDate = new Date();
     document.getElementById('exp-category-new').classList.add('d-none');
     await loadExpenses();

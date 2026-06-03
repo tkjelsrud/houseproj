@@ -30,6 +30,7 @@ export async function addExpense(data, uid) {
   return addDoc(collection(db, 'expenses'), {
     date: data.date,
     amount: Number(data.amount),
+    amountExpression: data.amountExpression || '',
     category: data.category.trim(),
     supplierName: data.supplierName.trim(),
     description: data.description.trim(),
