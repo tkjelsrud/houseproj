@@ -7,12 +7,12 @@ test('plain integer', () => {
   assert.equal(parseAmountExpression('287'), 287);
 });
 
-test('two terms', () => {
-  assert.equal(parseAmountExpression('287+450'), 737);
+test('two terms: 234+345 = 579', () => {
+  assert.equal(parseAmountExpression('234+345'), 579);
 });
 
-test('three terms', () => {
-  assert.equal(parseAmountExpression('287+450+750'), 1487);
+test('three terms: 234+345+129 = 708', () => {
+  assert.equal(parseAmountExpression('234+345+129'), 708);
 });
 
 test('whitespace around terms is tolerated', () => {
